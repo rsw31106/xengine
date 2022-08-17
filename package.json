@@ -1,6 +1,6 @@
 {
   "name": "@rsw31106/xengine",
-  "version": "0.0.4",
+  "version": "0.0.8",
   "description": "typescript helper engine for server",
   "repository": {
     "type": "git",
@@ -13,6 +13,7 @@
     "library"
   ],
   "main": "build/index.js",
+  "types": "build/index.d.ts",
   "scripts": {
     "build": "del /s /q build && tsc -p .",
     "prepare": "npm run build"
