@@ -6,13 +6,13 @@ import AWS from "aws-sdk";
 import * as http from "http";
 import * as https from "https";
 
-
 export interface IAppConfig {
     use_https: boolean;
     tls_certs?: {
         cert: string;
         private: string;
         ca: string;
+        options?: object;
     };
     aws?: {
         region: string;
@@ -37,7 +37,7 @@ export abstract class XApp {
         this.Config = config;
         this.Logger = null;
         this.App = null;
-        process.on('beforeExit', async (code:number) => {            
+        process.on("beforeExit", async (code: number) => {
             await this.onDestroy();
         });
     }
@@ -73,8 +73,7 @@ export abstract class XApp {
                 this.Logger.info({ class: "XApp", func: "StartUp" }, `AWS SDK Loaded.. UserName:${info.User.UserName} UserID:${info.User.UserId} ARN:${info.User.Arn}`);
                 // aws sdk load가 성공한 후에 cloudwatch log를 attach 해준다.
                 XLogger.attachCloudwatchLog(config.logger);
-            }
-            catch (err) {
+            } catch (err) {
                 const typedError = err as Error;
                 this.Logger.error({ class: "XApp", func: "StartUp" }, `Failed to load AWS SDK.. err:${typedError.message}`);
                 config.aws = undefined;
@@ -128,6 +127,12 @@ export abstract class XApp {
         this.Logger!.error({ class: "XApp", func: "_errorHandler" }, err);
         res.sendStatus(500);
     }
+    protected createHTTPServer(port:number) {
+        let httpServer = http.createServer(<http.RequestListener>this.App);
+        httpServer.listen(port, async () => {
+            this.Logger!.info({ class: "XApp", func: "createHTTP" }, "HTTP Server listening on port:" + port);            
+        });
+    }
 
     private async _setupHTTP(config: IAppConfig) {
         if (process.argv.length < 3) {
@@ -150,12 +155,27 @@ export abstract class XApp {
             }
             const { constants } = require("crypto");
             const fs = require("fs");
-            let credentials = {
-                key: fs.readFileSync(config.tls_certs.private, "utf8"),
-                cert: fs.readFileSync(config.tls_certs.cert, "utf8"),
-                ca: fs.readFileSync(config.tls_certs.ca, "utf8"),
+            let key: string | undefined;
+            let cert: string | undefined;
+            let ca: string | undefined;
+            if (config.tls_certs.private != "") {
+                key = fs.readFileSync(config.tls_certs.private, "utf8");
+            }
+            if (config.tls_certs.cert != "") {
+                cert = fs.readFileSync(config.tls_certs.cert, "utf8");
+            }
+            if (config.tls_certs.ca != "") {
+                ca = fs.readFileSync(config.tls_certs.ca, "utf8");
+            }
+            let credentials: https.ServerOptions = {
+                key, //: fs.readFileSync(config.tls_certs.private, "utf8"),
+                cert, //: fs.readFileSync(config.tls_certs.cert, "utf8"),
+                ca, //: fs.readFileSync(config.tls_certs.ca, "utf8"),
                 secureOptions: constants.SSL_OP_NO_SSLv3 | constants.SSL_OP_NO_TLSv1,
             };
+            if (config.tls_certs.options) {
+                credentials = { ...credentials, ...config.tls_certs.options };
+            }
             let httpsServer = https.createServer(credentials, <http.RequestListener>this.App);
             if (!(await this.onServerBeforeStartUp(config, httpsServer))) {
                 this.Logger!.error({ class: "XApp", func: "StartUp" }, `Failed 'onServerBeforeStartUp'.. exit..`);
@@ -172,7 +192,7 @@ export abstract class XApp {
                 process.exit(-1);
             }
             httpServer.listen(port, async () => {
-                this.Logger!.info({ class: "XApp", func: "_setupHTTP" }, "HTTP Server listening on port2 " + port);
+                this.Logger!.info({ class: "XApp", func: "_setupHTTP" }, "HTTP Server listening on port " + port);
                 await funcStartup();
             });
         }

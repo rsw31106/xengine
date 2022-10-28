@@ -46,19 +46,32 @@ export class XUtil {
         return d.toString();
     }
     public static GetIP(req:http.IncomingMessage):string {
-        try {
+        let orgIP = req.socket.remoteAddress;
+        try {            
             let ipAddr:string = requestIp.getClientIp(req)!;
+            if( ipAddr != orgIP ){
+                return ipAddr;
+            }
             let addr = new Address6(ipAddr);
-            let ip = addr.address4?.address!;
-            return ip;
+            if( addr.address4 ){
+                return addr.address4.address;
+            }            
+            if( req.socket.remoteAddress ){
+                return req.socket.remoteAddress;
+            }
+            return ipAddr;
         }
         catch(err){}
         return req.socket.remoteAddress!;
+    }
+    public static RoundFloat(num:number, places:number){
+        return +(Math.round(Number(num + `e+${places}`))  + "e-" + places);
+    }
+    public static FloorFloat(num:number, places:number){
+        return +(Math.floor(Number(num + `e+${places}`))  + "e-" + places);
     }
     // public static GetIP(ip:string):string{
     //     requestIp.getClientIp(ip);
     // }
 }
-
-
 

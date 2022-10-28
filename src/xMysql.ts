@@ -15,15 +15,13 @@ export interface IMySQLDetailConfig {
     database: string;
     pool_limit?: number;
     connection_timeout_ms?: number;
+    timezone?:string;
 }
-
 
 export interface XMySQLError extends QueryError {
     sql: string;
     sqlMessage: string;
 }
-
-
 
 function instanceOfMySqlError(object: any): object is XMySQLError {
     return "code" in object && "errno" in object && "sql" in object;
@@ -50,6 +48,7 @@ export class XMySQL {
             user: master_config.id,
             password: master_config.password,
             database: master_config.database,
+            timezone:master_config.timezone,
             supportBigNumbers: true,
             bigNumberStrings: true,
 
@@ -58,7 +57,7 @@ export class XMySQL {
 
             enableKeepAlive: true,
             keepAliveInitialDelay: 1000 * 5,
-            rowsAsArray: false
+            rowsAsArray: false,
         });
         this.slave = null;
         let slave_config = config.slave;
@@ -69,6 +68,7 @@ export class XMySQL {
                 user: slave_config.id,
                 password: slave_config.password,
                 database: slave_config.database,
+                timezone:slave_config.timezone,
                 supportBigNumbers: true,
                 bigNumberStrings: true,
 
@@ -76,7 +76,7 @@ export class XMySQL {
                 connectTimeout: slave_config.connection_timeout_ms ? slave_config.connection_timeout_ms : 1000 * 8,
 
                 enableKeepAlive: true,
-                keepAliveInitialDelay: 1000 * 5
+                keepAliveInitialDelay: 1000 * 5,
             });
         }
     }
@@ -181,6 +181,9 @@ export class XMySQL {
                 if (instanceOfMySqlError(err)) {
                     message = `[${this.name}] query failed. code:${err.code} no:${err.errno} state:${err.sqlState} sql:${err.sql}`;
                     this.logger.error({ err, func: "query", type: "mysql error", uuid }, message);
+                } else if (err instanceof XError) {
+                    // XError인 경우 그대로 throw한다.
+                    throw err;
                 } else {
                     const typedError = err as Error;
                     this.logger.error({ err, func: "query", type: "mysql error", uuid }, typedError.message);
@@ -223,7 +226,11 @@ export class XMySQL {
                 if (instanceOfMySqlError(err)) {
                     message = `[${this.name}] query failed. code:${err.code} no:${err.errno} state:${err.sqlState} sql:${err.sql} msg:${err.sqlMessage}`;
                     this.logger.error({ err, func: "transaction", type: "mysql error", uuid }, message);
-                } else {
+                } else if (err instanceof XError) {
+                    // XError인 경우 그대로 throw한다.
+                    throw err;
+                }
+                else {
                     const typedError = err as Error;
                     this.logger.error({ err, func: "transaction", type: "mysql error", uuid }, typedError.message);
                     message = typedError.message;
