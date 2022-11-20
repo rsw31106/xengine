@@ -37,6 +37,9 @@ export class XRedis {
         let redis = this._createRedis( (retries:number)=>{
             throw new Error(`Failed to connect redis.. config:${JSON.stringify(this.config)}`);
         });
+        redis.on("error", async (err) => {            
+            //this.logger.error({ err, type: "redis got error", func: "redis.error" }, `Redis got error :${err.message}`);            
+        });   
         await redis.connect();                
         // Check Redis Version
         let version = await redis.info("server")!;
@@ -49,7 +52,7 @@ export class XRedis {
         if (majorVersion < 5) {
             throw new Error("Redis version must be greater than 5!!");
         }
-        await redis.quit();
+        await redis.disconnect();
     }
     get() : RedisClientType {
         return this.redis!;
