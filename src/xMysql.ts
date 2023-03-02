@@ -14,8 +14,7 @@ export interface IMySQLDetailConfig {
     password: string;
     database: string;
     pool_limit?: number;
-    connection_timeout_ms?: number;
-    timezone?:string;
+    connection_timeout_ms?: number;    
 }
 
 export interface XMySQLError extends QueryError {
@@ -47,8 +46,7 @@ export class XMySQL {
             port: master_config.port,
             user: master_config.id,
             password: master_config.password,
-            database: master_config.database,
-            timezone:master_config.timezone,
+            database: master_config.database,            
             supportBigNumbers: true,
             bigNumberStrings: true,
 
@@ -67,8 +65,7 @@ export class XMySQL {
                 port: slave_config.port,
                 user: slave_config.id,
                 password: slave_config.password,
-                database: slave_config.database,
-                timezone:slave_config.timezone,
+                database: slave_config.database,                
                 supportBigNumbers: true,
                 bigNumberStrings: true,
 
