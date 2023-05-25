@@ -73,5 +73,15 @@ export class XUtil {
     // public static GetIP(ip:string):string{
     //     requestIp.getClientIp(ip);
     // }
+
+    public static IS_LOCAL_SERVER() {
+        return process.env.CONFIG == "local";
+    }
+    public static IS_TEST_SERVER(){
+        return process.env.CONFIG == "test";
+    }
+    public static IS_LIVE_SERVER() {
+        return process.env.CONFIG == "live";
+    }
 }
 
