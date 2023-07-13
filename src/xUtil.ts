@@ -56,6 +56,11 @@ export class XUtil {
             if (addr.address4) {
                 return addr.address4.address;
             }
+            try{
+                let addrv4 = addr.to4();
+                return addrv4.address;
+            }
+            catch(err){}
             if (req.socket.remoteAddress) {
                 return req.socket.remoteAddress;
             }
