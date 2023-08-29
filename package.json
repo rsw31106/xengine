@@ -1,6 +1,6 @@
 {
   "name": "@rsw31106/xengine",
-  "version": "0.0.24",
+  "version": "0.0.28",
   "description": "typescript helper engine for server",
   "repository": {
     "type": "git",
@@ -32,6 +32,7 @@
     "bunyan": "^1.8.15",
     "bunyan-cloudwatch": "^2.2.0",
     "chalk": "4.1.2",
+    "cwlogs-writable": "^1.0.0",
     "express": "^4.18.1",
     "ip": "^1.1.8",
     "ip-address": "^8.1.0",

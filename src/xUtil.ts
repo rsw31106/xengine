@@ -3,6 +3,7 @@ import randomstring from 'randomstring';
 import requestIp from 'request-ip';
 import { Address6 } from 'ip-address';
 import http from 'http';
+import * as AWS from 'aws-sdk';
 
 export class XUtil {
     public static GetHostname(): string {
@@ -56,11 +57,11 @@ export class XUtil {
             if (addr.address4) {
                 return addr.address4.address;
             }
-            try{
+            try {
                 let addrv4 = addr.to4();
                 return addrv4.address;
             }
-            catch(err){}
+            catch (err) { }
             if (req.socket.remoteAddress) {
                 return req.socket.remoteAddress;
             }
@@ -169,6 +170,28 @@ export class XUtil {
         if (haveAll)
             return;
         throw new Error(comment);
+    }
+
+    public static UploadJSONToS3(s3: AWS.S3 | undefined, bucketName: string, pathName: string, objString: string) : Promise<AWS.S3.Types.PutObjectOutput> {
+        if (s3 == undefined) {
+            s3 = new AWS.S3();
+        }        
+        const params: AWS.S3.PutObjectRequest = {
+            Bucket: bucketName,
+            Key: pathName,
+            Body: objString,
+            ContentType: 'application/json'
+        };
+        return new Promise((resolve, reject) => {
+            s3!.putObject(params, (err,data)=>{
+                if( err ){
+                    reject(err);
+                }
+                else{
+                    resolve(data);
+                }
+            });
+        });
     }
 }
 
