@@ -23,7 +23,9 @@ export class XRedis {
     protected config : IRedisConfig;
     protected logger: XLoggerType;
     protected redis: RedisClientType|null;
-    protected errorOccurred : bool;    
+    protected errorOccurred : bool;  
+    protected major_version: number = 0;  
+    protected minor_version: number = 0;
 
     constructor( config:IRedisConfig,  logger: XLoggerType ){
         this.config = config;
@@ -47,9 +49,12 @@ export class XRedis {
             .split("\r\n")
             .find((v) => v.includes("redis_version"))!
             .split(":")[1];
-        let majorVersion = parseInt(version.split(".")[0]);
-        this.logger.info({ func: "_checkRedis" }, `--> Redis MajorVersion:${majorVersion} Version:${version}`);
-        if (majorVersion < 5) {
+        let t = version.split(".");
+        this.major_version = parseInt(t[0]);
+        this.minor_version = parseInt(t[1]);
+
+        this.logger.info({ func: "_checkRedis" }, `--> Redis MajorVersion:${this.major_version} MinorVersion:${this.minor_version}`);
+        if (this.major_version < 5) {
             throw new Error("Redis version must be greater than 5!!");
         }
         await redis.disconnect();
