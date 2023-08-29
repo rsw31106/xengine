@@ -62,6 +62,12 @@ export class XRedis {
     get() : RedisClientType {
         return this.redis!;
     }
+    get MajorVersion() {
+        return this.major_version;
+    }
+    get MinorVersion() {
+        return this.minor_version;
+    }
 
     async Init(tryConnect:boolean=true) {
         //=============================================================
