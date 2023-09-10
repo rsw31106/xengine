@@ -1,10 +1,9 @@
 import { ILoggerConfig, XLogger, XLoggerType } from "./xLogger";
 import express from "express";
 import AWS from "aws-sdk";
-//import * as Sentry from "@sentry/node";
-//import * as Tracing from "@sentry/tracing";
 import * as http from "http";
 import * as https from "https";
+import chalk from "chalk";
 
 export interface IAppConfig {
     use_https: boolean;
@@ -33,13 +32,42 @@ export abstract class XApp {
     abstract onExpressErrorHandler(err: Error, req: express.Request, res: express.Response): void;
     abstract onDestroy(): Promise<void>;
 
+    private _isDestroy = false;
+
     constructor(config: IAppConfig) {
         this.Config = config;
         this.Logger = null;
         this.App = null;
         process.on("beforeExit", async (code: number) => {
-            await this.onDestroy();
+            await this._HandlingShutdown('beforeExist');
         });
+        process.on('SIGINT', async ()=>{
+            let code = await this._HandlingShutdown('SIGINT');
+            process.exit(code);
+        });
+    }
+    private async _HandlingShutdown(signal:string) {
+        if( this._isDestroy ){
+            return 0;
+        }
+        this._isDestroy = true;
+        console.log(
+            chalk.magenta.bold(`****** Handling process ${signal} ******`)
+        );
+        try{
+            await this.onDestroy();
+        }
+        catch(err){
+            const typedError = err as Error;
+            console.log(
+                chalk.magenta.bold(`Failed to onDestroy.. Err:${typedError.message}`)
+            );     
+            return 1;           
+        }
+        console.log(
+            chalk.magenta.bold(`--> Done`)
+        );  
+        return 0;
     }
     public Get() {
         return {

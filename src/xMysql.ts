@@ -93,6 +93,12 @@ export class XMySQL {
         }
         this.logger.info(`[${this.name}] Done..`);
     }
+    async Terminate() {
+        await this.master.end();
+        if( this.slave ){
+            await this.slave.end();
+        }
+    }
 
     async _getReadConn() {
         let conn = null;

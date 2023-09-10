@@ -89,6 +89,14 @@ export class XRedis {
         }
         this.logger.info({ func: "Init" }, "--> Done");               
     }
+    async Terminate() {
+        if( this.redis != null ){
+            try{
+                await this.redis.
+                await this.redis.quit();
+            }catch(err){}
+        }
+    }
 
     private _createRedis( reconnectStrategy:reconnectStrategyFunc): RedisClientType {
         let redis = createClient({
