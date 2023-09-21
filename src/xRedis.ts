@@ -91,8 +91,7 @@ export class XRedis {
     }
     async Terminate() {
         if( this.redis != null ){
-            try{
-                await this.redis.
+            try{                
                 await this.redis.quit();
             }catch(err){}
         }
