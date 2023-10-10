@@ -55,6 +55,8 @@ export class XMySQL {
 
             enableKeepAlive: true,
             keepAliveInitialDelay: 1000 * 5,
+            maxIdle: 0,
+            idleTimeout: 600000,
             rowsAsArray: false,
         });
         this.slave = null;
@@ -74,6 +76,9 @@ export class XMySQL {
 
                 enableKeepAlive: true,
                 keepAliveInitialDelay: 1000 * 5,
+                maxIdle: 0,
+                idleTimeout: 600000,
+                rowsAsArray: false
             });
         }
     }
@@ -164,12 +169,13 @@ export class XMySQL {
         const con = readOnly ? await this._getReadConn() : await this.master.getConnection();
 
         // 로직에 con과 args(넘겨받은 paramter)를 넘겨준다.
-        const result = await fn(con, ...args).catch(async (error: Error) => {
+        const result = await fn(con, ...args).catch(async (error: Error) => {            
             // 에러시 con을 닫아준다.
             con.release();
             try {
                 if (instanceOfMySqlError(error)) {
-                    if (error.code == "ER_OPTION_PREVENTS_STATEMENT" || error.errno == 1290 || error.code == "ER_CANT_LOCK" || error.errno == 1015) {
+                    if (error.code == "ER_OPTION_PREVENTS_STATEMENT" || error.errno == 1290 || error.code == "ER_CANT_LOCK" || error.errno == 1015
+                        || error.code == "PROTOCOL_CONNECTION_LOST" || error.code == "ECONNRESET") {
                         try {
                             this.logger.info({ func: "query", uuid }, `[${this.name}] got error but try to resolve failover..`);
                             return await this._resolveFailOver(false, fn, ...args);
@@ -182,7 +188,7 @@ export class XMySQL {
             } catch (err) {
                 let message = "";
                 if (instanceOfMySqlError(err)) {
-                    message = `[${this.name}] query failed. code:${err.code} no:${err.errno} state:${err.sqlState} sql:${err.sql}`;
+                    message = `[${this.name}] query failed. code:${err.code} no:${err.errno} state:${err.sqlState} sql:${err.sql} stack:${err.stack}`;
                     this.logger.error({ err, func: "query", type: "mysql error", uuid }, message);
                 } else if (err instanceof XError) {
                     // XError인 경우 그대로 throw한다.
@@ -214,7 +220,8 @@ export class XMySQL {
 
             try {
                 if (instanceOfMySqlError(error)) {
-                    if (error.code == "ER_OPTION_PREVENTS_STATEMENT" || error.errno == 1290 || error.code == "ER_CANT_LOCK" || error.errno == 1015) {
+                    if (error.code == "ER_OPTION_PREVENTS_STATEMENT" || error.errno == 1290 || error.code == "ER_CANT_LOCK" || error.errno == 1015 || 
+                        error.code == "PROTOCOL_CONNECTION_LOST" || error.code == "ECONNRESET") {
                         try {
                             this.logger.info({ func: "transaction", uuid }, `[${this.name}] got error but try to resolve failover..`);
                             return await this._resolveFailOver(true, fn, ...args);

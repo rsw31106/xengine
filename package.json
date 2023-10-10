@@ -1,6 +1,6 @@
 {
   "name": "@rsw31106/xengine",
-  "version": "0.0.34",
+  "version": "0.0.35",
   "description": "typescript helper engine for server",
   "repository": {
     "type": "git",
@@ -36,7 +36,7 @@
     "express": "^4.18.1",
     "ip": "^1.1.8",
     "ip-address": "^8.1.0",
-    "mysql2": "^2.3.3",
+    "mysql2": "^3.6.1",
     "randomstring": "^1.2.2",
     "redis": "4.5.0",
     "request-ip": "^3.3.0"
