@@ -4,6 +4,8 @@ import requestIp from 'request-ip';
 import { Address6 } from 'ip-address';
 import http from 'http';
 import * as AWS from 'aws-sdk';
+import * as JWT from "jsonwebtoken";
+
 
 export class XUtil {
     public static GetHostname(): string {
@@ -90,26 +92,22 @@ export class XUtil {
         return process.env.CONFIG == "live";
     }
     public static CHECK_UNDEFINED(v: any, comment: string): any {
-        if (!v) {
+        if (v == undefined) {
             throw new Error(comment);
         }
         return v;
     }
     public static CHECK_BOOLEAN(v: any, comment: string): boolean {
-        if (v == undefined) {
-            throw new Error(comment);
-        }
-        if (typeof v !== "boolean") {
+        XUtil.CHECK_UNDEFINED(v,comment);        
+        if (typeof v !== "boolean") {            
             let _v = this.CHECK_NUMBER(v, comment, true);
             return _v == 0 ? false : true;
         }
         return v;
     };
     public static CHECK_NUMBER(v: string | number, comment: string, mustInteger: boolean = true): number {
-        if (v == undefined) {
-            throw new Error(comment);
-        }
-        if (typeof v == "string") {
+        XUtil.CHECK_UNDEFINED(v,comment);   
+        if (typeof v === "string") {
             let n = parseInt(v);
             if (isNaN(n)) {
                 throw new Error(comment);
@@ -129,19 +127,21 @@ export class XUtil {
         }
         throw new Error(comment);
     }
-    public static CHECK_STRING_ISEMPTY(v: string, comment: string): string {
-        if (v == undefined) {
+    public static CHECK_STRING(v: any, comment: string, mustNotEmpty=true): string {
+        XUtil.CHECK_UNDEFINED(v,comment);
+        if (typeof v !== "string") {
             throw new Error(comment);
-        }
-        if (v === "") {
-            throw new Error(comment);
-        }
+        }  
+        if (mustNotEmpty && v === "") {
+            throw new Error(comment + "(Empty)");
+        }       
         return v;
     }
+    public static CHECK_STRING_ISEMPTY(v: string, comment: string): string {
+        return XUtil.CHECK_STRING(v,comment,true);        
+    }
     public static CHECK_ARRAY(v: any, comment: string) {
-        if (v == undefined) {
-            throw new Error(comment);
-        }
+        XUtil.CHECK_UNDEFINED(v,comment);
         if (!Array.isArray(v))
             throw new Error(comment);
         return v;
@@ -189,6 +189,29 @@ export class XUtil {
                 }
                 else{
                     resolve(data);
+                }
+            });
+        });
+    }
+    public static JWTSign(jwtKey:string, payload: string | Buffer | object, opt: JWT.SignOptions): Promise<string> {
+        return new Promise((resolve, reject) => {
+            JWT.sign(payload, jwtKey, opt, function (err: Error | null, token: string | undefined) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(token!);
+                }
+            });
+        });
+    }
+
+    public static JWTVerify(jwtKey:string, jwt: string, opt?: JWT.VerifyOptions & { complete: true }): Promise<JWT.JwtPayload> {
+        return new Promise((resolve, reject) => {
+            JWT.verify(jwt, jwtKey, opt!, (err: JWT.VerifyErrors | null, payload: JWT.JwtPayload | undefined) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(payload!);
                 }
             });
         });
