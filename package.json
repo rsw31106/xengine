@@ -1,6 +1,6 @@
 {
   "name": "@rsw31106/xengine",
-  "version": "0.0.39",
+  "version": "0.0.40",
   "description": "typescript helper engine for server",
   "repository": {
     "type": "git",
@@ -16,7 +16,8 @@
   "types": "build/index.d.ts",
   "scripts": {
     "build": "del /s /q build && tsc -p .",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "test": "node --test test/*.test.js"
   },
   "author": "rsw31106 <rsw31106@hotmail.com>",
   "license": "MIT",

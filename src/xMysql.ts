@@ -22,6 +22,11 @@ export interface XMySQLError extends QueryError {
     sqlMessage: string;
 }
 
+/** 풀 점유 상태. mysql2 내부 필드(_allConnections/_freeConnections/_connectionQueue)를 읽으므로 없으면 0으로 둔다. */
+export interface XMySQLPoolStats { active: number; idle: number; waiting: number; max: number }
+/** 커넥션 획득 대기 시간(ms) 리스너. 예외는 삼킨다 — 계측이 쿼리를 막지 않는다. */
+export type XMySQLAcquireListener = (waitMs: number, readOnly: boolean) => void;
+
 function instanceOfMySqlError(object: any): object is XMySQLError {
     return "code" in object && "errno" in object && "sql" in object;
 }
@@ -32,6 +37,7 @@ export class XMySQL {
     private logger: XLoggerType;
     private master: Pool;
     private slave: Pool | null;
+    private acquireListener: XMySQLAcquireListener | null = null;
 
     constructor(name: string, config: IMySQLConfig, logger: XLoggerType) {
         this.name = name;
@@ -112,6 +118,33 @@ export class XMySQL {
         return conn;
     }
 
+    /** 계측 훅 등록(null이면 해제). 호출 비용은 Date.now() 2회뿐이다. */
+    setAcquireListener(fn: XMySQLAcquireListener | null) {
+        this.acquireListener = fn;
+    }
+
+    /** master 풀의 현재 점유. active = 전체 − idle, waiting = 대기 큐 길이, max = connectionLimit. */
+    poolStats(): XMySQLPoolStats {
+        const p: any = (this.master as any)?.pool ?? this.master;
+        const all = Number(p?._allConnections?.length ?? 0), free = Number(p?._freeConnections?.length ?? 0);
+        return {
+            active: Math.max(0, all - free),
+            idle: free,
+            waiting: Number(p?._connectionQueue?.length ?? 0),
+            max: Number(p?.config?.connectionLimit ?? this.config.master.pool_limit ?? 1),
+        };
+    }
+
+    /** 커넥션 획득 + 대기 시간 계측. query/transaction의 유일한 획득 경로. */
+    private async _acquire(readOnly: boolean): Promise<PoolConnection> {
+        const t0 = Date.now();
+        const con = readOnly ? await this._getReadConn() : await this.master.getConnection();
+        if (this.acquireListener) {
+            try { this.acquireListener(Date.now() - t0, readOnly); } catch { /* 계측 실패 무시 */ }
+        }
+        return con;
+    }
+
     async _resolveFailOver(is_transaction: boolean, fn: Function, ...args: any[]) {
         // limit만큼 돈다.
         let beginTime = new Date().getTime();
@@ -166,7 +199,7 @@ export class XMySQL {
 
     async query(readOnly: boolean, uuid: string, fn: Function, ...args: any[]) {
         // DB 커넥션을 한다.
-        const con = readOnly ? await this._getReadConn() : await this.master.getConnection();
+        const con = await this._acquire(readOnly);
 
         // 로직에 con과 args(넘겨받은 paramter)를 넘겨준다.
         const result = await fn(con, ...args).catch(async (error: Error) => {            
@@ -208,7 +241,7 @@ export class XMySQL {
     }
     async transaction(readOnly: boolean, uuid: string, fn: Function, ...args: any[]) {
         // DB 커넥션을 한다.
-        const con = readOnly ? await this._getReadConn() : await (<Pool>this.master).getConnection();
+        const con = await this._acquire(readOnly);
         // 트렌젝션 시작
         await con.beginTransaction();
         // 비지니스 로직에 con을 넘겨준다.
